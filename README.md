@@ -6,7 +6,12 @@ To elaborate, this project seeks to fill a void in the tuning landscape. Tools l
 
 At the moment, this tool supports AFR natively, with lambda coming soon. DO NOT TUNE POWER ENRICHMENT WITH THIS TOOL. Or at least automatically with paste data. If you must tune WOT, use the observed AFR table to reference against, as the program has no concept of changing AFR during PE.
 
-#TODO
+I have provided a test .csv that is set up for VETuner natively.
+
+
+TODO
 Add lambda support
+
 Add support for PE detection (don't want the program to think 12.7 is rich in a PE cell)
+
 Test other types of VE tables
