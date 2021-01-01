@@ -1,3 +1,15 @@
+/*
+Written by hkaase, for use in DIY homebrew tuning applications as an alternative to paid tools. 
+It's not great, but it's better than nothing.
+
+TODO:
+
+Create cell class to simplify mess of arrays
+Combinatory interpolation using horizontal and vertical values
+Advanced interpolation algorithms (we can be smarter - VE tables do not scale linearly)
+Convert to QT GUI (someday)
+
+*/
 #include <string>
 #include <iostream>
 #include <iomanip>
@@ -29,30 +41,30 @@ int main() {
         cout << "Bool set to false" << endl;
     }
     
-    cout << "Give me some info about your VE table. This assumes that vacuum is the y-axis, RPM is the x-axis." << endl;
+    cout << "Give me some info about your VE table. This assumes that vacuum is the y-axis, RPM is the x-axis. If you don't know, the values in parentheses should work for an LS. " << endl;
     
-    cout << "How many rows?" << endl;
+    cout << "How many rows? (x-axis, probably 20)" << endl;
     int numRows;
     cin >> numRows;
     numRows += 1;
-    cout << "How many columns?" << endl;
+    cout << "How many columns? (y-axis, probably 19)" << endl;
     int numCols;
     cin >> numCols;
     numCols += 1;
     
-    cout << "What's the minimum value of the rows?" << endl;
+    cout << "What's the minimum value of the rows? (400)" << endl;
     int minRowVal;
     cin >> minRowVal;
     
-    cout << "What's the maximum value of the rows?" << endl;
+    cout << "What's the maximum value of the rows? (8000)" << endl;
     int maxRowVal;
     cin >> maxRowVal;
     
-    cout << "What's the minimum value of the columns?" << endl;
+    cout << "What's the minimum value of the columns? (15)" << endl;
     int minColVal;
     cin >> minColVal;
     
-    cout << "What's the maximum value of the columns?" << endl;
+    cout << "What's the maximum value of the columns? (105)" << endl;
     int maxColVal;
     cin >> maxColVal;
     
@@ -134,6 +146,7 @@ int main() {
     string fileName;
     cin >> fileName;
     logFile.open(fileName.c_str());
+    cin.ignore(1);
     if (!logFile) {
         cout << "Error opening file. Abort" << endl;
         exit(0);
@@ -145,6 +158,8 @@ int main() {
     int currentRow, currentCol;
     char trash;
     int minRecords;
+    
+    //If PE not enabled
     if (!peModeTuning) {
         while (logFile >> observedRPM >> trash >> 
         observedMAP >> trash >> observedAFR) {
@@ -159,6 +174,8 @@ int main() {
         cout << "Processed " << recordCounter << " records." << endl;
         cout << "What is the minimum number of records to accept a cell as valid?" << endl;
         cin >> minRecords;
+        
+        //If the number of observed records is greater than the established minimum, update the observed AFR in the table.
         for (int i = 1; i < numCols; i++) {
             for (int j = 1; j < numRows; j++) {
                 if (recordCounterVE[i][j] >= minRecords) {
@@ -166,14 +183,21 @@ int main() {
                 }
             }
         }
+        
+        //If the number of observed records is greater than the minimum, divide the observed AFR by our target AFR.
         for (int i = 1; i < numCols; i++) {
             for (int j = 1; j < numRows; j++) {
-                if (recordCounterVE[i][j] >= minRecords) {
+                if (recordCounterVE[i][j] >= minRecords && afrEnable) {
                     mainVECorrectionFactor[i][j] = (mainVEObserved[i][j] / AFR_TARGET);
+                }
+                if (recordCounterVE[i][j] >= minRecords && lambdaEnable) {
+                    mainVECorrectionFactor[i][j] = (mainVEObserved[i][j] / LAMBDA_TARGET);
                 }
             }
         }
     }
+    
+    //If PE enabled
     else {
         //This is a vector, to ensure ease of modification and adaptability if necessary.
         //Edit this with the correct values for your non-LS application if necessary.
@@ -195,10 +219,13 @@ int main() {
             tpsEnableArray.push_back(tpsPercentage);
         }
         cout << "What is the minimum number of records to accept a cell as valid?" << endl;
-        int minRecords;
         cin.clear();
+        
+        //Necessary to clear trash out of buffer for SOME reason.
         cin.ignore(1);
         cin >> minRecords;
+        
+        //Read from logfile parameters, in this order.
         while (logFile >> observedRPM >> trash >> 
         observedMAP >> trash >> observedAFR >> trash >> observedTPS) {
             currentRow = (calculateRow(minRowVal, rowIncrement, observedRPM));
@@ -206,15 +233,22 @@ int main() {
             mainVEObserved[currentRow][currentCol] += observedAFR;
             recordCounterVE[currentRow][currentCol] += 1;
             recordCounter++;
+            
             int i = 0;
             while (tpsRPMArray.at(i) < observedRPM && (i < tpsEnableArray.size())) {
                 i++;
             }
+            //This is a dumb way to do this, but essentially the subtraction here is necessary because in the above
+            //line we determine the array value AFTER our criteria. The subtraction is a dumb hack to make it work.
             i -= 1;
+            
+            //Compare the TPS observed to our array at the RPM range. If it is greater, PE is enabled.
             if (tpsEnableArray.at(i) <= observedTPS) {
                 isPE[currentRow][currentCol] = true;
             }
         }
+        
+        //If the number of observed records is greater than the established minimum, update the observed AFR in the table.
         for (int i = 1; i < numCols; i++) {
             for (int j = 1; j < numRows; j++) {
                 if (recordCounterVE[i][j] >= minRecords) {
@@ -222,29 +256,41 @@ int main() {
                 }
             }
         }
+        
+        //If the number of observed records is greater than the minimum, divide the observed AFR by our target AFR.
         for (int i = 1; i < numCols; i++) {
             for (int j = 1; j < numRows; j++) {
-                if (recordCounterVE[i][j] >= minRecords && !(isPE[i][j])) {
+                if ((recordCounterVE[i][j] >= minRecords) && !(isPE[i][j]) && afrEnable) {
                     mainVECorrectionFactor[i][j] = (mainVEObserved[i][j] / AFR_TARGET);
                 }
-                else if (recordCounterVE[i][j] >= minRecords && (isPE[i][j])) {
+                else if ((recordCounterVE[i][j] >= minRecords) && (isPE[i][j]) && afrEnable) {
                     mainVECorrectionFactor[i][j] = (mainVEObserved[i][j] / (AFR_TARGET * eqRatio));
+                }
+                
+                //If we are using lambda
+                else if ((recordCounterVE[i][j] >= minRecords) && !(isPE[i][j]) && lambdaEnable) {
+                    mainVECorrectionFactor[i][j] = (mainVEObserved[i][j] / LAMBDA_TARGET);
+                }
+                else if ((recordCounterVE[i][j] >= minRecords) && (isPE[i][j]) && afrEnable) {
+                    mainVECorrectionFactor[i][j] = (mainVEObserved[i][j] / (LAMBDA_TARGET * eqRatio));
                 }
             }
         }
-        for (int i = 1; i < numCols; i++) {
-            for (int j = 1; j < numRows; j++) {
-                cout << isPE[i][j] << " ";
-            }
-        cout << endl;
-        }
+        
         cout << "Processed " << recordCounter << " records." << endl;
     }
     
 
     
-    //print debug routines
-    
+    //Print debug routines
+    //Print cells where PE was observed.
+    cout << "Power enrichment was observed in the following cells." << endl;
+    for (int i = 1; i < numCols; i++) {
+           for (int j = 1; j < numRows; j++) {
+            cout << isPE[i][j] << " ";
+        }
+    cout << endl;
+    }
     //VE Observed
     cout << "This is the observed AFR." << endl << endl;
     for (int i = 0; i < numCols; i++) {
@@ -275,14 +321,17 @@ int main() {
     }
     cout << endl;
     
-    cout << "If you would like to use the tuning functionality, please paste your VE table. After your paste, type an alphabetic character and hit enter to exit input." << endl;
+    cout << "If you would like to use the tuning functionality, please paste your VE table. After your paste, type an alphabetic character and hit enter to exit input. Unfortunately, due to limitations with TunerPro and the tab character in the cmd window, if you use TunerPro you must first convert the tabs to spaces in order for this program to be able to read it." << endl;
     int rowCounter = 1;
     int colCounter = 1;
     counter = 1;
     double inputVE;
+    
+    //VE table input routine.
     while (cin >> inputVE) {
         mainVEInput[rowCounter][colCounter] = inputVE;
         rowCounter++;
+        //If the rowCounter is equal to the numRows, this means we reached the end. 
         if (rowCounter == numRows) {
             rowCounter = 1;
             colCounter++;
@@ -290,6 +339,9 @@ int main() {
     }
     
     cout << "This is what you input. Please make sure it is correct!" << endl << endl;
+    
+    
+    //Print the input back to the screen, just to be safe.
     for (int i = 0; i < numCols; i++) {
         for (int j = 0; j < numRows; j++) {
             cout << setw(8) << mainVEInput[j][i] << " ";
@@ -306,6 +358,8 @@ int main() {
     }
     cout << "Okay, I am going to apply the correction factor to the VE you pasted. If there are less than your specified minimum number of cells, nothing happens." << endl;
     
+    //Once again, if the observed records was greater than the defined minimum, we do something. In this case, it is apply the correction factor
+    //to the VE table.
     for (int i = 1; i < numCols; i++) {
         for (int j = 1; j < numRows; j++) {
             if (recordCounterVE[j][i] >= minRecords) {
@@ -316,14 +370,39 @@ int main() {
         }
     }
     
+    //Interpolation (work in progress)
+    cout << "Would you like to apply interpolation to the table? This can help smooth out missed cells. Type y for yes, anything else for no." << endl;
+    cin >> input;
+    if (input == 'y') {
+        for (int i = 2; i < numCols - 1; i++) {
+            for (int j = 2; j < numRows; j++) {
+                
+                //Horizontal interpolation
+                if ((recordCounterVE[j][i] < minRecords) && ((recordCounterVE[j][i-1] >= minRecords) && (recordCounterVE[j][i+1] >= minRecords))) {
+                    cout << "Interpolation applied at " << j << " by " << i << endl;
+                    mainVEInput[j][i] *= ((mainVECorrectionFactor[j][i-1]) + (mainVECorrectionFactor[j][i+1])) / 2;
+                }
+                
+                //Vertical interpolation
+                else if ((recordCounterVE[j][i] < minRecords) && ((recordCounterVE[j-1][i] >= minRecords) && (recordCounterVE[j+1][i] >= minRecords))) {
+                    cout << "Interpolation applied at " << j << " by " << i << endl;
+                    mainVEInput[j][i] *= ((mainVECorrectionFactor[j-1][i]) + (mainVECorrectionFactor[j+1][i])) / 2;
+                }
+            }
+        }
+    }
     //Print corrected VE to screen
     cout << "This is the proposed VE corrected table." << endl << endl;
     for (int i = 0; i < numCols; i++) {
         for (int j = 0; j < numRows; j++) {
-            cout << setw(8) << mainVEInput[i][j] << " ";
+            cout << setw(8) << mainVEInput[j][i] << " ";
         }
         cout << endl;
     }
+    
+    
+    
+    
     cout << "The corrected table is going to be sent to a file named ve_corrected.txt. However, I need to know what software you're using to output it in a way that you can paste it directly to your tuning software." << endl;
     bool tunerPro, hpTuners;
     cout << "Type 1 for TunerPro, type 2 for HPTuners." << endl;
