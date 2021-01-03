@@ -5,7 +5,7 @@ It's not great, but it's better than nothing.
 TODO:
 
 Create cell class to simplify mess of arrays
-Combinatory interpolation using horizontal and vertical values
+Combinatory interpolation using horizontal and vertical values - DONE
 Advanced interpolation algorithms (we can be smarter - VE tables do not scale linearly)
 Convert to QT GUI (someday)
 
@@ -16,65 +16,102 @@ Convert to QT GUI (someday)
 #include <cmath>
 #include <fstream>
 #include <vector>
+#include "rlutil.h"
+
 
 using namespace std;
 
 const double AFR_TARGET = 14.7;
 const double LAMBDA_TARGET = 1.0;
 
+//For printing colors to console
+const int BLACK = 0;
+const int BLUE = 1;
+const int GREEN = 2;
+const int CYAN = 3;
+const int RED = 4;
+const int MAGENTA = 5;
+const int BROWN = 6;
+const int GREY = 7;
+const int LIGHT_GREY = 8;
+const int LIGHT_BLUE = 9;
+const int LIGHT_GREEN = 10;
+const int LIGHT_CYAN = 11;
+const int LIGHT_RED = 12;
+const int LIGHT_MAGENTA = 13;
+const int YELLOW = 14;
+const int WHITE = 15;
+
 int calculateRow(double, double, double);
 int calculateCol(double, double, double);
+
 
 
 int main() {
     bool peModeTuning;
     
-    cout << "Do you want support for PE mode tuning? Type 1 for yes, 2 for no. (Know that if this is disabled, tuning in the PE range can produce catastrophic results!)" << endl;
-    int choice = 0;
-    cin >> choice;
+    cout << "Do you want support for PE mode tuning? Type y for yes, n for no. (Know that if this is disabled, tuning in the PE range can produce catastrophic results!)" << endl;
+    char input;
+    cin >> input;
     
-    if (choice == 1) {
+    if (input == 'y' || input == 'Y') {
         peModeTuning = true;
-        cout << "Bool set to true" << endl;
+        rlutil::setColor(GREEN);
+        cout << "Using PE mode" << endl;
     }
     else {
-        cout << "Bool set to false" << endl;
+        rlutil::setColor(RED);
+        cout << "Not using PE mode" << endl;
+    }
+    rlutil::setColor(WHITE);
+    cout << "Would you like to use default settings for an LS engine? Type y for yes, anything else for no." << endl;
+    cin >> input;
+    bool useDefaults;
+    if (input == 'y' || input == 'Y') {
+        useDefaults = true;
+    }
+    else {
+        useDefaults = false;
+    }
+    int numRows = 21;
+    int numCols = 20;
+    int minRowVal = 400;
+    int maxRowVal = 8000;
+    int minColVal = 15;
+    int maxColVal = 105;
+
+    if (!useDefaults) {
+        cout << "Give me some info about your VE table. This assumes that vacuum is the y-axis, RPM is the x-axis. If you don't know, the values in parentheses should work for an LS. " << endl;
+    
+        cout << "How many rows? (x-axis, probably 20)" << endl;
+        cin >> numRows;
+        numRows += 1;
+        cout << "How many columns? (y-axis, probably 19)" << endl;
+        cin >> numCols;
+        numCols += 1;
+        
+        cout << "What's the minimum value of the rows? (400)" << endl;
+        cin >> minRowVal;
+        
+        cout << "What's the maximum value of the rows? (8000)" << endl;
+        cin >> maxRowVal;
+        
+        cout << "What's the minimum value of the columns? (15)" << endl;
+        cin >> minColVal;
+        
+        cout << "What's the maximum value of the columns? (105)" << endl;
+        cin >> maxColVal;
     }
     
-    cout << "Give me some info about your VE table. This assumes that vacuum is the y-axis, RPM is the x-axis. If you don't know, the values in parentheses should work for an LS. " << endl;
-    
-    cout << "How many rows? (x-axis, probably 20)" << endl;
-    int numRows;
-    cin >> numRows;
-    numRows += 1;
-    cout << "How many columns? (y-axis, probably 19)" << endl;
-    int numCols;
-    cin >> numCols;
-    numCols += 1;
-    
-    cout << "What's the minimum value of the rows? (400)" << endl;
-    int minRowVal;
-    cin >> minRowVal;
-    
-    cout << "What's the maximum value of the rows? (8000)" << endl;
-    int maxRowVal;
-    cin >> maxRowVal;
-    
-    cout << "What's the minimum value of the columns? (15)" << endl;
-    int minColVal;
-    cin >> minColVal;
-    
-    cout << "What's the maximum value of the columns? (105)" << endl;
-    int maxColVal;
-    cin >> maxColVal;
-    
     cout << "Generating VE array." << endl;
-    double mainVEObserved[numCols + 1][numRows + 1] = {0};
-    double mainVECorrectionFactor[numCols + 1][numRows + 1] = {0};
-    double mainVEInput[numCols + 1][numRows + 1] = {0};
-    bool isPE[numCols+1][numRows+1] = {0};
-    double recordCounterVE[numCols + 1][numRows + 1] = {0};
+    double mainVEObserved[numCols + 1][numRows + 1] = {{0}};
+    double mainVECorrectionFactor[numCols + 1][numRows + 1] = {{0}};
+    double mainVEInput[numCols + 1][numRows + 1] = {{0}};
+    double mainVECorrected[numCols + 1][numRows + 1] = {{0}};
+    bool isPE[numCols+1][numRows+1] = {{0}};
+    double recordCounterVE[numCols + 1][numRows + 1] = {{0}};
     cout << "I have calculated that your row headings look something like this:" << endl;
+    
     /*For some unknown reason, the VE tables are not precisely
     approximated to even increments in the headings. Is this 
     the XDF prettying things up for me or is this intentional?
@@ -86,6 +123,7 @@ int main() {
     rowIncrement = (rowIncrement + 50) / 100 * 100;
     int rowValueAtCell = minRowVal;
     int counter = 1;
+    rlutil::setColor(BLUE);
     while (rowValueAtCell <= (maxRowVal + 1)) {
         cout << rowValueAtCell << " ";
         mainVEObserved[counter][0] = rowValueAtCell;
@@ -95,6 +133,7 @@ int main() {
         counter++;
         rowValueAtCell += rowIncrement;
     }
+    rlutil::setColor(WHITE);
     cout << endl;
     
     
@@ -105,41 +144,45 @@ int main() {
     colIncrement = ceil(colIncrement);
     int colValueAtCell = minColVal;
     counter = 1;
+    rlutil::setColor(BLUE);
     while (colValueAtCell <= (maxColVal)&& counter < numRows) {
         cout << colValueAtCell << endl;
         mainVEObserved[0][counter] = colValueAtCell;
         mainVECorrectionFactor[0][counter] = colValueAtCell;
         recordCounterVE[0][counter] = colValueAtCell;
         mainVEInput[0][counter] = colValueAtCell;
+        mainVECorrected[0][counter] = colValueAtCell;
         counter++;
         colValueAtCell += colIncrement;
     }
-    
+    rlutil::setColor(WHITE);
+
     for (int i = 1; i <= numCols; i++) {
         for (int j = 1; j <= numRows; j++) {
-            mainVEObserved[i][j] = 0;
-            mainVECorrectionFactor[i][j] = 0;
-            mainVEInput[i][j] = 0;
-            recordCounterVE[i][j] = 0;
-            isPE[i][j] = 0;
+            recordCounterVE[j][i] = 0;
+            isPE[j][i] = 0;
         }
-    }    
+    }
+    
     cout << "Are you using AFR or lambda? Type 1 for AFR, 2 for lambda." << endl;
-    bool afrEnable = false;
-    bool lambdaEnable = false;
+    int choice;
     cin >> choice;
+    double target;
     if (choice = 1) {
-        afrEnable = true;
+        rlutil::setColor(GREEN);
+        target = AFR_TARGET;
         cout << "Using AFR" << endl;
     }
     else if (choice == 2) {
-        lambdaEnable = true;
+        rlutil::setColor(GREEN);
+        target = LAMBDA_TARGET;
         cout << "Using lambda." << endl;
     }
     else {
+        rlutil::setColor(RED);
         cout << "Please choose 1 or 2." << endl;
     }
-    
+    rlutil::setColor(WHITE);
     //Input File Processing
     cout << "Please enter name of input log file with the extension. Make sure that it is in the same folder as this executable and that it follws the format of RPM, MAP, and then AFR. If you have PE tuning enabled, it should be RPM, MAP, AFR, then TPS%. Ensure this value is a percentage!" << endl; 
     ifstream logFile;
@@ -148,7 +191,9 @@ int main() {
     logFile.open(fileName.c_str());
     cin.ignore(1);
     if (!logFile) {
+        rlutil::setColor(RED);
         cout << "Error opening file. Abort" << endl;
+        rlutil::setColor(WHITE);
         exit(0);
     }
     
@@ -187,11 +232,8 @@ int main() {
         //If the number of observed records is greater than the minimum, divide the observed AFR by our target AFR.
         for (int i = 1; i < numCols; i++) {
             for (int j = 1; j < numRows; j++) {
-                if (recordCounterVE[i][j] >= minRecords && afrEnable) {
-                    mainVECorrectionFactor[i][j] = (mainVEObserved[i][j] / AFR_TARGET);
-                }
-                if (recordCounterVE[i][j] >= minRecords && lambdaEnable) {
-                    mainVECorrectionFactor[i][j] = (mainVEObserved[i][j] / LAMBDA_TARGET);
+                if (recordCounterVE[i][j] >= minRecords) {
+                    mainVECorrectionFactor[i][j] = (mainVEObserved[i][j] / target);
                 }
             }
         }
@@ -260,19 +302,11 @@ int main() {
         //If the number of observed records is greater than the minimum, divide the observed AFR by our target AFR.
         for (int i = 1; i < numCols; i++) {
             for (int j = 1; j < numRows; j++) {
-                if ((recordCounterVE[i][j] >= minRecords) && !(isPE[i][j]) && afrEnable) {
-                    mainVECorrectionFactor[i][j] = (mainVEObserved[i][j] / AFR_TARGET);
+                if ((recordCounterVE[i][j] >= minRecords) && !(isPE[i][j])) {
+                    mainVECorrectionFactor[i][j] = (mainVEObserved[i][j] / target);
                 }
-                else if ((recordCounterVE[i][j] >= minRecords) && (isPE[i][j]) && afrEnable) {
-                    mainVECorrectionFactor[i][j] = (mainVEObserved[i][j] / (AFR_TARGET * eqRatio));
-                }
-                
-                //If we are using lambda
-                else if ((recordCounterVE[i][j] >= minRecords) && !(isPE[i][j]) && lambdaEnable) {
-                    mainVECorrectionFactor[i][j] = (mainVEObserved[i][j] / LAMBDA_TARGET);
-                }
-                else if ((recordCounterVE[i][j] >= minRecords) && (isPE[i][j]) && afrEnable) {
-                    mainVECorrectionFactor[i][j] = (mainVEObserved[i][j] / (LAMBDA_TARGET * eqRatio));
+                else if ((recordCounterVE[i][j] >= minRecords) && (isPE[i][j])) {
+                    mainVECorrectionFactor[i][j] = (mainVEObserved[i][j] / (target * eqRatio));
                 }
             }
         }
@@ -287,7 +321,11 @@ int main() {
     cout << "Power enrichment was observed in the following cells." << endl;
     for (int i = 1; i < numCols; i++) {
            for (int j = 1; j < numRows; j++) {
+            if (isPE[i][j]) {
+                rlutil::setColor(GREEN);
+            }
             cout << isPE[i][j] << " ";
+            rlutil::setColor(WHITE);
         }
     cout << endl;
     }
@@ -295,7 +333,35 @@ int main() {
     cout << "This is the observed AFR." << endl << endl;
     for (int i = 0; i < numCols; i++) {
         for (int j = 0; j < numRows; j++) {
-            cout << setw(8) << mainVEObserved[j][i] << " ";
+            if ((i == 0) || (j == 0)) {
+                rlutil::setColor(BLUE);
+                cout << setw(8) << mainVEObserved[j][i] << " ";
+            }
+            else if (recordCounterVE[j][i] >= minRecords) {
+                if (mainVEObserved[j][i] >= target * 1.05) {
+                    rlutil::setColor(RED);
+                }
+                else if (mainVEObserved[j][i] >= target * 1.01) {
+                    rlutil::setColor(LIGHT_RED);
+                }
+                else if (mainVEObserved[j][i] >= target) {
+                    rlutil::setColor(WHITE);
+                }
+                else if (mainVEObserved[j][i] <= target * .95) {
+                    rlutil::setColor(GREEN);
+                }
+                else if (mainVEObserved[j][i] <= target * .99) {
+                    rlutil::setColor(LIGHT_GREEN);
+                }
+                else if (mainVEObserved[j][i] <= target) {
+                    rlutil::setColor(WHITE);
+                }
+                cout << setw(8) << mainVEObserved[j][i] << " ";
+            }
+            else {
+                rlutil::setColor(GREY);
+                cout << setw(8) << "0" << " ";
+            }
         }
         cout << endl;
     }
@@ -304,8 +370,36 @@ int main() {
     //VE Correction Factor
     cout << "This is the proposed VE correction factor." << endl << endl;
     for (int i = 0; i < numCols; i++) {
-        for (int j = 0; j < numRows; j++) {
-            cout << setw(8) << mainVECorrectionFactor[j][i] << " ";
+            for (int j = 0; j < numRows; j++) {
+               if ((i == 0) || (j == 0)) {
+                    rlutil::setColor(BLUE);
+                    cout << setw(8) << mainVECorrectionFactor[j][i] << " ";
+                }
+                else if (recordCounterVE[j][i] >= minRecords) {
+                    if (mainVECorrectionFactor[j][i] >= 1.05) {
+                        rlutil::setColor(RED);
+                    }
+                    else if (mainVECorrectionFactor[j][i] >= 1.01) {
+                        rlutil::setColor(LIGHT_RED);
+                    }
+                    else if (mainVECorrectionFactor[j][i] >= target) {
+                        rlutil::setColor(WHITE);
+                    }
+                    else if (mainVECorrectionFactor[j][i] <= target * .95) {
+                        rlutil::setColor(GREEN);
+                    }
+                    else if (mainVECorrectionFactor[j][i] <= target * .99) {
+                        rlutil::setColor(LIGHT_GREEN);
+                    }
+                    else if (mainVECorrectionFactor[j][i] <= target) {
+                        rlutil::setColor(WHITE);
+                    }
+                    cout << setw(8) << mainVECorrectionFactor[j][i] << " ";
+                }
+                else {
+                    rlutil::setColor(GREY);
+                    cout << setw(8) << "0" << " ";
+                } 
         }
         cout << endl;
     }
@@ -315,6 +409,19 @@ int main() {
     cout << "This is the number of hits per cell." << endl << endl;
     for (int i = 0; i < numCols; i++) {
         for (int j = 0; j < numRows; j++) {
+            if (i == 0 || j == 0) {
+                rlutil::setColor(BLUE);
+            }
+            else if (recordCounterVE[j][i] >= minRecords) {
+                rlutil::setColor(GREEN);
+            }
+            else if (recordCounterVE[j][i] == 0) {
+                rlutil::setColor(GREY);
+            }
+            else {
+                rlutil::setColor(RED);
+            }
+            
             cout << setw(4) << recordCounterVE[j][i] << " ";
         }
         cout << endl;
@@ -344,12 +451,22 @@ int main() {
     //Print the input back to the screen, just to be safe.
     for (int i = 0; i < numCols; i++) {
         for (int j = 0; j < numRows; j++) {
+            if (i == 0 || j == 0) {
+                rlutil::setColor(BLUE);
+            }
+            else {
+                rlutil::setColor(WHITE);
+            }
             cout << setw(8) << mainVEInput[j][i] << " ";
         }
         cout << endl;
     }
-    cout << "If this is incorrect, type q to quit. Otherwise, hit enter to continue." << endl;
-    char input;
+    cout << "If this is incorrect, type q to quit. Otherwise, type any character and hit enter to continue." << endl;
+    for (int i = 0; i < numCols; i++) {
+        for (int j = 0; j < numRows; j++) {
+            mainVECorrected[j][i] = mainVEInput[j][i];
+        }
+    }
     cin.clear();
     cin >> trash;
     cin >> input;
@@ -365,7 +482,7 @@ int main() {
             if (recordCounterVE[j][i] >= minRecords) {
                 cout << "I corrected the cell at " << j << " by " << i << endl;
                 cout << "The factor was " << mainVECorrectionFactor[j][i] << endl;
-                mainVEInput[j][i] *= mainVECorrectionFactor[j][i];
+                mainVECorrected[j][i] = mainVEInput[j][i] * mainVECorrectionFactor[j][i];
             }
         }
     }
@@ -395,11 +512,29 @@ int main() {
     cout << "This is the proposed VE corrected table." << endl << endl;
     for (int i = 0; i < numCols; i++) {
         for (int j = 0; j < numRows; j++) {
-            cout << setw(8) << mainVEInput[j][i] << " ";
+            if (i == 0 || j == 0) {
+                rlutil::setColor(BLUE);
+            }
+            else if (mainVECorrected[j][i] == mainVEInput[j][i]) {
+                rlutil::setColor(WHITE);
+            }
+            else if (mainVECorrected[j][i] >= mainVEInput[j][i] * 1.05) {
+                rlutil::setColor(RED);
+            }
+            else if (mainVECorrected[j][i] > mainVEInput[j][i]) {
+                rlutil::setColor(LIGHT_RED);
+            }
+            else if (mainVECorrected[j][i] <= mainVEInput[j][i] * .95) {
+                rlutil::setColor(GREEN);
+            }
+            else if (mainVECorrected[j][i] < mainVEInput[j][i]) {
+                rlutil::setColor(LIGHT_GREEN);
+            }
+            cout << setw(8) << mainVECorrected[j][i] << " ";
         }
         cout << endl;
     }
-    
+    rlutil::setColor(WHITE);
     
     
     
