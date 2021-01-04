@@ -538,6 +538,8 @@ int main() {
     
     
     
+    
+    
     cout << "The corrected table is going to be sent to a file named ve_corrected.txt. However, I need to know what software you're using to output it in a way that you can paste it directly to your tuning software." << endl;
     bool tunerPro, hpTuners;
     cout << "Type 1 for TunerPro, type 2 for HPTuners." << endl;
@@ -558,7 +560,7 @@ int main() {
                 if (j != 1) {
                     outputFile << '\t';
                 }
-                outputFile << fixed << setprecision(4) << mainVEInput[j][i];
+                outputFile << fixed << setprecision(4) << mainVECorrected[j][i];
             }
             outputFile << '\n';
         }
@@ -566,7 +568,7 @@ int main() {
     else if (hpTuners) {
         for (int i = 1; i < numCols; i++) {
             for (int j = 1; j < numRows; j++) {
-                outputFile << fixed << setprecision(4) << mainVEInput[j][i] << '\t';
+                outputFile << fixed << setprecision(4) << mainVECorrected[j][i] << '\t';
             }
             outputFile << '\n';
         }
