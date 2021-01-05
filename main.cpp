@@ -23,6 +23,7 @@ using namespace std;
 
 const double AFR_TARGET = 14.7;
 const double LAMBDA_TARGET = 1.0;
+const double veBoundary = .8;
 
 //For printing colors to console
 const int BLACK = 0;
@@ -44,6 +45,7 @@ const int WHITE = 15;
 
 int calculateRow(double, double, double);
 int calculateCol(double, double, double);
+double smoothData(double, double, double);
 
 
 
@@ -297,10 +299,6 @@ int main() {
         //If the number of observed records is greater than the established minimum, update the observed AFR in the table.
         for (int i = 1; i < numCols; i++) {
             for (int j = 1; j < numRows; j++) {
-                if (i == 11) {
-                    cout << mainVEObserved[i][j] << endl;
-                    cout << recordCounterVE[i][j] << endl;
-                }
                 if (recordCounterVE[i][j] >= minRecords) {
                     mainVEObserved[i][j] = mainVEObserved[i][j] / recordCounterVE[i][j];
                 }
@@ -549,23 +547,26 @@ int main() {
     
     //Experimental despiking algorithm. Don't use it! 
     
-    /*
+    
     cout << "Would you like to attempt to smooth big outliers?" << endl;
     int iterations = 0;
+    const int veBoundary = .8;
     while (iterations < 2) {
-        for (int j = 3; j < numRows * .8; j++) {
-            for (int i = 3; i < numCols * .8; i++) {
+        for (int j = 3; j < numRows * veBoundary; j++) {
+            for (int i = 3; i < numCols * veBoundary; i++) {
                 if (!((mainVECorrected[j][i-2] < mainVECorrected[j][i-1]) &&  (mainVECorrected[j][i-1] < mainVECorrected[j][i]) && (mainVECorrected[j][i] < mainVECorrected[j][i+1]))) {
-                    
-                    cout << "Outlier detected. Outlier was" << mainVECorrected[j][i] << ", data smoothed to " << (mainVECorrected[j][i-1] + mainVECorrected[j][i+1]) / 2 << endl;
-                    mainVECorrected[j][i] = (mainVECorrected[j][i-1] + mainVECorrected[j][i+1]) / 2;
-                    //mainVECorrected[j][i] = ((((mainVECorrected[j][i-1] + mainVECorrected[j][i+1]) / 2) + (mainVECorrected[j-1][i] + mainVECorrected[j+1][i]) / 2) / 2);
+                    double originalVal, smoothedVal;
+                    originalVal = mainVECorrected[j][i];
+                    smoothedVal = smoothData(mainVECorrected[j][i-1], mainVECorrected[j][i], mainVECorrected[j][i+1]);
+                    if (smoothedVal < originalVal) {
+                        cout << "Outlier detected. Outlier was" << mainVECorrected[j][i] << ", data smoothed to " << smoothData(mainVECorrected[j][i-1], mainVECorrected[j][i], mainVECorrected[j][i+1]) << endl;
+                        mainVECorrected[j][i] = smoothedVal;
+                    }
                 }
             }
         }
         iterations++;
     }
-    */
     
     //Print corrected VE to screen
     cout << "This is the proposed VE corrected table." << endl << endl;
@@ -649,4 +650,8 @@ int calculateCol(double minColVal, double colIncrement, double observedMAP) {
         currentCol++;
     }
     return currentCol + 1;
+}
+double smoothData(double smallest, double spike, double biggest) {
+    spike = (biggest + smallest) / 2;
+    return spike;    
 }
