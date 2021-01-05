@@ -6,7 +6,7 @@ TODO:
 
 Create cell class to simplify mess of arrays
 Combinatory interpolation using horizontal and vertical values - DONE
-Advanced interpolation algorithms (we can be smarter - VE tables do not scale linearly)
+Advanced interpolation algorithms (we can be smarter - VE tables do not scale linearly) - DONE, kind of. Smoothing is now a thing.
 Convert to QT GUI (someday)
 
 */
@@ -548,26 +548,29 @@ int main() {
     //Experimental despiking algorithm. Don't use it! 
     
     
-    cout << "Would you like to attempt to smooth big outliers?" << endl;
-    int iterations = 0;
-    const int veBoundary = .8;
-    while (iterations < 2) {
-        for (int j = 3; j < numRows * veBoundary; j++) {
-            for (int i = 3; i < numCols * veBoundary; i++) {
-                if (!((mainVECorrected[j][i-2] < mainVECorrected[j][i-1]) &&  (mainVECorrected[j][i-1] < mainVECorrected[j][i]) && (mainVECorrected[j][i] < mainVECorrected[j][i+1]))) {
-                    double originalVal, smoothedVal;
-                    originalVal = mainVECorrected[j][i];
-                    smoothedVal = smoothData(mainVECorrected[j][i-1], mainVECorrected[j][i], mainVECorrected[j][i+1]);
-                    if (smoothedVal < originalVal) {
-                        cout << "Outlier detected. Outlier was" << mainVECorrected[j][i] << ", data smoothed to " << smoothData(mainVECorrected[j][i-1], mainVECorrected[j][i], mainVECorrected[j][i+1]) << endl;
-                        mainVECorrected[j][i] = smoothedVal;
+    cout << "Would you like to attempt to smooth big outliers? Y for yes, anything else for no. Note that this is most definitely not a perfect smooth, and may make things worse. If uncertain, don't use this." << endl;
+    cin.ignore(1);
+    cin >> input;
+    if (input == 'y' || input == 'Y') {
+        int iterations = 0;
+        const double veBoundary = .8;
+        while (iterations < 2) {
+            for (int j = 3; j < numRows * veBoundary; j++) {
+                for (int i = 3; i < numCols * veBoundary; i++) {
+                    if (!((mainVECorrected[j][i-2] < mainVECorrected[j][i-1]) &&  (mainVECorrected[j][i-1] < mainVECorrected[j][i]) && (mainVECorrected[j][i] < mainVECorrected[j][i+1]))) {
+                        double originalVal, smoothedVal;
+                        originalVal = mainVECorrected[j][i];
+                        smoothedVal = smoothData(mainVECorrected[j][i-1], mainVECorrected[j][i], mainVECorrected[j][i+1]);
+                        if (smoothedVal < originalVal) {
+                            cout << "Outlier detected. Outlier was" << mainVECorrected[j][i] << ", data smoothed to " << smoothData(mainVECorrected[j][i-1], mainVECorrected[j][i], mainVECorrected[j][i+1]) << endl;
+                            mainVECorrected[j][i] = smoothedVal;
+                        }
                     }
                 }
             }
+            iterations++;
         }
-        iterations++;
     }
-    
     //Print corrected VE to screen
     cout << "This is the proposed VE corrected table." << endl << endl;
     for (int i = 0; i < numCols; i++) {
@@ -579,16 +582,16 @@ int main() {
                 rlutil::setColor(WHITE);
             }
             else if (mainVECorrected[j][i] >= mainVEInput[j][i] * 1.05) {
-                rlutil::setColor(RED);
-            }
-            else if (mainVECorrected[j][i] > mainVEInput[j][i]) {
-                rlutil::setColor(LIGHT_RED);
-            }
-            else if (mainVECorrected[j][i] <= mainVEInput[j][i] * .95) {
                 rlutil::setColor(GREEN);
             }
-            else if (mainVECorrected[j][i] < mainVEInput[j][i]) {
+            else if (mainVECorrected[j][i] > mainVEInput[j][i]) {
                 rlutil::setColor(LIGHT_GREEN);
+            }
+            else if (mainVECorrected[j][i] <= mainVEInput[j][i] * .95) {
+                rlutil::setColor(RED);
+            }
+            else if (mainVECorrected[j][i] < mainVEInput[j][i]) {
+                rlutil::setColor(LIGHT_RED);
             }
             cout << setw(8) << mainVECorrected[j][i] << " ";
         }
