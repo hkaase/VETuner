@@ -156,9 +156,11 @@ int main() {
         colValueAtCell += colIncrement;
     }
     rlutil::setColor(WHITE);
-
+    
+    //This loop is necessary to ensure the arrays are indeed empty. For whatever reason, garbage data keeps making its way into them.
     for (int i = 1; i <= numCols; i++) {
         for (int j = 1; j <= numRows; j++) {
+            mainVEObserved[j][i] = 0;
             recordCounterVE[j][i] = 0;
             isPE[j][i] = 0;
         }
@@ -295,6 +297,10 @@ int main() {
         //If the number of observed records is greater than the established minimum, update the observed AFR in the table.
         for (int i = 1; i < numCols; i++) {
             for (int j = 1; j < numRows; j++) {
+                if (i == 11) {
+                    cout << mainVEObserved[i][j] << endl;
+                    cout << recordCounterVE[i][j] << endl;
+                }
                 if (recordCounterVE[i][j] >= minRecords) {
                     mainVEObserved[i][j] = mainVEObserved[i][j] / recordCounterVE[i][j];
                 }
