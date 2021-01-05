@@ -266,27 +266,29 @@ int main() {
         //Necessary to clear trash out of buffer for SOME reason.
         cin.ignore(1);
         cin >> minRecords;
-        
         //Read from logfile parameters, in this order.
         while (logFile >> observedRPM >> trash >> 
         observedMAP >> trash >> observedAFR >> trash >> observedTPS) {
-            currentRow = (calculateRow(minRowVal, rowIncrement, observedRPM));
-            currentCol = (calculateCol(minColVal, colIncrement, observedMAP));
-            mainVEObserved[currentRow][currentCol] += observedAFR;
-            recordCounterVE[currentRow][currentCol] += 1;
-            recordCounter++;
-            
-            int i = 0;
-            while (tpsRPMArray.at(i) < observedRPM && (i < tpsEnableArray.size())) {
-                i++;
-            }
-            //This is a dumb way to do this, but essentially the subtraction here is necessary because in the above
-            //line we determine the array value AFTER our criteria. The subtraction is a dumb hack to make it work.
-            i -= 1;
-            
-            //Compare the TPS observed to our array at the RPM range. If it is greater, PE is enabled.
-            if (tpsEnableArray.at(i) <= observedTPS) {
-                isPE[currentRow][currentCol] = true;
+            if (observedRPM > 50) {
+                currentRow = (calculateRow(minRowVal, rowIncrement, observedRPM));
+                currentCol = (calculateCol(minColVal, colIncrement, observedMAP));
+                mainVEObserved[currentRow][currentCol] += observedAFR;
+                recordCounterVE[currentRow][currentCol] += 1;
+                recordCounter++;
+                
+                int i = 0;
+                while (tpsRPMArray.at(i) < observedRPM && (i < tpsEnableArray.size())) {
+                    i++;
+
+                }
+                //This is a dumb way to do this, but essentially the subtraction here is necessary because in the above
+                //line we determine the array value AFTER our criteria. The subtraction is a dumb hack to make it work.
+                i -= 1;
+                
+                //Compare the TPS observed to our array at the RPM range. If it is greater, PE is enabled.
+                if (tpsEnableArray.at(i) <= observedTPS) {
+                    isPE[currentRow][currentCol] = true;
+                }
             }
         }
         
@@ -306,7 +308,7 @@ int main() {
                     mainVECorrectionFactor[i][j] = (mainVEObserved[i][j] / target);
                 }
                 else if ((recordCounterVE[i][j] >= minRecords) && (isPE[i][j])) {
-                    mainVECorrectionFactor[i][j] = (mainVEObserved[i][j] / (target * eqRatio));
+                    mainVECorrectionFactor[i][j] = (mainVEObserved[i][j] / (target * (1/eqRatio)));
                 }
             }
         }
@@ -508,6 +510,57 @@ int main() {
             }
         }
     }
+    
+    //Smoothing
+    
+    //Print corrected VE to screen
+    cout << "This is the proposed VE corrected table." << endl << endl;
+    for (int i = 0; i < numCols; i++) {
+        for (int j = 0; j < numRows; j++) {
+            if (i == 0 || j == 0) {
+                rlutil::setColor(BLUE);
+            }
+            else if (mainVECorrected[j][i] == mainVEInput[j][i]) {
+                rlutil::setColor(WHITE);
+            }
+            else if (mainVECorrected[j][i] >= mainVEInput[j][i] * 1.05) {
+                rlutil::setColor(RED);
+            }
+            else if (mainVECorrected[j][i] > mainVEInput[j][i]) {
+                rlutil::setColor(LIGHT_RED);
+            }
+            else if (mainVECorrected[j][i] <= mainVEInput[j][i] * .95) {
+                rlutil::setColor(GREEN);
+            }
+            else if (mainVECorrected[j][i] < mainVEInput[j][i]) {
+                rlutil::setColor(LIGHT_GREEN);
+            }
+            cout << setw(8) << mainVECorrected[j][i] << " ";
+        }
+        cout << endl;
+    }
+    rlutil::setColor(WHITE);
+    
+    //Experimental despiking algorithm. Don't use it! 
+    
+    /*
+    cout << "Would you like to attempt to smooth big outliers?" << endl;
+    int iterations = 0;
+    while (iterations < 2) {
+        for (int j = 3; j < numRows * .8; j++) {
+            for (int i = 3; i < numCols * .8; i++) {
+                if (!((mainVECorrected[j][i-2] < mainVECorrected[j][i-1]) &&  (mainVECorrected[j][i-1] < mainVECorrected[j][i]) && (mainVECorrected[j][i] < mainVECorrected[j][i+1]))) {
+                    
+                    cout << "Outlier detected. Outlier was" << mainVECorrected[j][i] << ", data smoothed to " << (mainVECorrected[j][i-1] + mainVECorrected[j][i+1]) / 2 << endl;
+                    mainVECorrected[j][i] = (mainVECorrected[j][i-1] + mainVECorrected[j][i+1]) / 2;
+                    //mainVECorrected[j][i] = ((((mainVECorrected[j][i-1] + mainVECorrected[j][i+1]) / 2) + (mainVECorrected[j-1][i] + mainVECorrected[j+1][i]) / 2) / 2);
+                }
+            }
+        }
+        iterations++;
+    }
+    */
+    
     //Print corrected VE to screen
     cout << "This is the proposed VE corrected table." << endl << endl;
     for (int i = 0; i < numCols; i++) {
