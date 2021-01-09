@@ -187,6 +187,14 @@ int main() {
         cout << "Please choose 1 or 2." << endl;
     }
     rlutil::setColor(WHITE);
+    bool deinterpolationEnable;
+    
+    cout << "Would you like to use deinterpolation? This has the potential to give much more accurate results, however, it is relatively untested and has no sanity checks. Type y for yes, and n for no." << endl;
+    cin >> input;
+    if (input == 'y' || input == 'Y') {
+        deinterpolationEnable = true;
+    }
+    
     //Input File Processing
     cout << "Please enter name of input log file with the extension. Make sure that it is in the same folder as this executable and that it follws the format of RPM, MAP, and then AFR. If you have PE tuning enabled, it should be RPM, MAP, AFR, then TPS%. Ensure this value is a percentage!" << endl; 
     ifstream logFile;
@@ -202,27 +210,69 @@ int main() {
     }
     
     
-    double observedRPM, observedMAP, observedAFR, observedTPS;
+    double observedRPM, observedMAP, observedAFR, observedTPS, locationRow1, locationCol1, locationRow2, locationCol2;
     int recordCounter = 0;
     int currentRow, currentCol;
     char trash;
-    int minRecords;
+    double minRecords;
     
+    cout << "What is the minimum number of records to accept a cell as valid?" << endl;
+    cin >> minRecords;
     //If PE not enabled
     if (!peModeTuning) {
         while (logFile >> observedRPM >> trash >> 
         observedMAP >> trash >> observedAFR) {
-            currentRow = (calculateRow(minRowVal, rowIncrement, observedRPM));
-            currentCol = (calculateCol(minColVal, colIncrement, observedMAP));
-            mainVEObserved[currentRow][currentCol] += observedAFR;
-            recordCounterVE[currentRow][currentCol] += 1;
+            if (deinterpolationEnable && (observedRPM > 0)) {
+                //Necessary to make the minRecords work with the way interpolation stores counts
+                if (recordCounter == 0) {
+                    minRecords = minRecords / 20;
+                }
+                currentRow = (calculateRow(minRowVal, rowIncrement, observedRPM));
+                currentCol = (calculateCol(minColVal, colIncrement, observedMAP));
+                
+                //LS PCM uses interpolation to find where it is between cells
+                //Need to reverse interpolation
+                //Calculate where we are between cells
+                
+                locationRow1 = (mainVEObserved[currentRow][0] - observedRPM) /rowIncrement;
+                if (locationRow1>= .5) {
+                    locationRow2 = locationRow1;
+                    locationRow1 = 1 - locationRow1;
+                }
+                else {
+                    locationRow2 = 1 - locationRow1;
+                }
+                
+                locationCol1 = ((mainVEObserved[0][currentCol]) - observedMAP) / colIncrement;
+                if (locationCol1 >= .5) {
+                    locationCol2 = locationCol1;
+                    locationCol1 = 1 - locationCol1;
+                }
+                else {
+                    locationCol2 = 1 - locationCol1;
+                }
+                mainVEObserved[currentRow][currentCol] += (observedAFR * locationRow1 * locationCol1);
+                recordCounterVE[currentRow][currentCol] += (locationRow1*locationCol1);
+                
+                mainVEObserved[currentRow + 1][currentCol] += (observedAFR * locationRow2 * locationCol1);
+                recordCounterVE[currentRow + 1][currentCol] += (locationRow2*locationCol1);
+                
+                mainVEObserved[currentRow][currentCol + 1] += (observedAFR * locationRow1 * locationCol2);
+                recordCounterVE[currentRow][currentCol + 1] += (locationRow1*locationCol2);
+                
+                mainVEObserved[currentRow + 1][currentCol + 1] += (observedAFR* locationRow2 * locationCol2);
+                recordCounterVE[currentRow + 1][currentCol + 1] += (locationRow2*locationCol2);
+            }
+            else if (!deinterpolationEnable && (observedRPM > 0)){
+                currentRow = (calculateRow(minRowVal, rowIncrement, observedRPM));
+                currentCol = (calculateCol(minColVal, colIncrement, observedMAP));
+                mainVEObserved[currentRow][currentCol] += observedAFR;
+                recordCounterVE[currentRow][currentCol] += 1;
+            }
             recordCounter++;
-            
         }
         cout << "PE mode DISABLED! Be careful!" << endl;
         cout << "Processed " << recordCounter << " records." << endl;
-        cout << "What is the minimum number of records to accept a cell as valid?" << endl;
-        cin >> minRecords;
         
         //If the number of observed records is greater than the established minimum, update the observed AFR in the table.
         for (int i = 1; i < numCols; i++) {
@@ -264,36 +314,83 @@ int main() {
         while (cin >> tpsPercentage) {
             tpsEnableArray.push_back(tpsPercentage);
         }
-        cout << "What is the minimum number of records to accept a cell as valid?" << endl;
-        cin.clear();
         
-        //Necessary to clear trash out of buffer for SOME reason.
-        cin.ignore(1);
-        cin >> minRecords;
         //Read from logfile parameters, in this order.
         while (logFile >> observedRPM >> trash >> 
         observedMAP >> trash >> observedAFR >> trash >> observedTPS) {
-            if (observedRPM > 50) {
+            if (deinterpolationEnable && observedRPM > 0) {
+                //Necessary to make the minRecords work with the way interpolation stores counts
+                if (recordCounter == 0) {
+                    minRecords = minRecords / 20;
+                }
                 currentRow = (calculateRow(minRowVal, rowIncrement, observedRPM));
                 currentCol = (calculateCol(minColVal, colIncrement, observedMAP));
-                mainVEObserved[currentRow][currentCol] += observedAFR;
-                recordCounterVE[currentRow][currentCol] += 1;
-                recordCounter++;
                 
+                //LS PCM uses interpolation to find where it is between cells
+                //Need to reverse interpolation
+                //Calculate where we are between cells
+                
+                locationRow1 = (mainVEObserved[currentRow][0] - observedRPM) /rowIncrement;
+                if (locationRow1>= .5) {
+                    locationRow2 = locationRow1;
+                    locationRow1 = 1 - locationRow1;
+                }
+                else {
+                    locationRow2 = 1 - locationRow1;
+                }
+                
+                locationCol1 = ((mainVEObserved[0][currentCol]) - observedMAP) / colIncrement;
+                if (locationCol1 >= .5) {
+                    locationCol2 = locationCol1;
+                    locationCol1 = 1 - locationCol1;
+                }
+                else {
+                    locationCol2 = 1 - locationCol1;
+                }
+                mainVEObserved[currentRow][currentCol] += (observedAFR * locationRow1 * locationCol1);
+                recordCounterVE[currentRow][currentCol] += (locationRow1*locationCol1);
+                
+                mainVEObserved[currentRow + 1][currentCol] += (observedAFR * locationRow2 * locationCol1);
+                recordCounterVE[currentRow + 1][currentCol] += (locationRow2*locationCol1);
+                
+                mainVEObserved[currentRow][currentCol + 1] += (observedAFR * locationRow1 * locationCol2);
+                recordCounterVE[currentRow][currentCol + 1] += (locationRow1*locationCol2);
+                
+                mainVEObserved[currentRow + 1][currentCol + 1] += (observedAFR* locationRow2 * locationCol2);
+                recordCounterVE[currentRow + 1][currentCol + 1] += (locationRow2*locationCol2);
                 int i = 0;
                 while (tpsRPMArray.at(i) < observedRPM && (i < tpsEnableArray.size())) {
                     i++;
-
                 }
                 //This is a dumb way to do this, but essentially the subtraction here is necessary because in the above
                 //line we determine the array value AFTER our criteria. The subtraction is a dumb hack to make it work.
                 i -= 1;
-                
                 //Compare the TPS observed to our array at the RPM range. If it is greater, PE is enabled.
                 if (tpsEnableArray.at(i) <= observedTPS) {
                     isPE[currentRow][currentCol] = true;
                 }
             }
+            else if (!deinterpolationEnable && observedRPM > 0){
+                currentRow = (calculateRow(minRowVal, rowIncrement, observedRPM));
+                currentCol = (calculateCol(minColVal, colIncrement, observedMAP));
+                mainVEObserved[currentRow][currentCol] += observedAFR;
+                recordCounterVE[currentRow][currentCol] += 1;
+                recordCounter++;
+                    
+                int i = 0;
+                while (tpsRPMArray.at(i) < observedRPM && (i < tpsEnableArray.size())) {
+                    i++;
+                }
+                //This is a dumb way to do this, but essentially the subtraction here is necessary because in the above
+                //line we determine the array value AFTER our criteria. The subtraction is a dumb hack to make it work.
+                i -= 1;
+                    
+                //Compare the TPS observed to our array at the RPM range. If it is greater, PE is enabled.
+                if (tpsEnableArray.at(i) <= observedTPS) {
+                    isPE[currentRow][currentCol] = true;
+                }
+            }
+            recordCounter++;
         }
         
         //If the number of observed records is greater than the established minimum, update the observed AFR in the table.
@@ -428,7 +525,7 @@ int main() {
                 rlutil::setColor(RED);
             }
             
-            cout << setw(4) << recordCounterVE[j][i] << " ";
+            cout << setw(4) << fixed << setprecision(0) << recordCounterVE[j][i] << " ";
         }
         cout << endl;
     }
@@ -441,6 +538,7 @@ int main() {
     double inputVE;
     
     //VE table input routine.
+    cin.ignore(2);
     while (cin >> inputVE) {
         mainVEInput[rowCounter][colCounter] = inputVE;
         rowCounter++;
