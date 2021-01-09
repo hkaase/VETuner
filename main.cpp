@@ -525,7 +525,7 @@ int main() {
                 rlutil::setColor(RED);
             }
             
-            cout << setw(4) << fixed << setprecision(0) << recordCounterVE[j][i] << " ";
+            cout << setw(4) << setprecision(4) << recordCounterVE[j][i] << " ";
         }
         cout << endl;
     }
@@ -536,9 +536,10 @@ int main() {
     int colCounter = 1;
     counter = 1;
     double inputVE;
-    
+    cin.clear();
+    cin.ignore(1);
+
     //VE table input routine.
-    cin.ignore(2);
     while (cin >> inputVE) {
         mainVEInput[rowCounter][colCounter] = inputVE;
         rowCounter++;
@@ -572,7 +573,7 @@ int main() {
         }
     }
     cin.clear();
-    cin >> trash;
+    cin.ignore(1);
     cin >> input;
     if (input == 'q') {
         exit(0);
@@ -594,6 +595,7 @@ int main() {
     //Interpolation (work in progress)
     cout << "Would you like to apply interpolation to the table? This can help smooth out missed cells. Type y for yes, anything else for no." << endl;
     cin >> input;
+    cin.ignore(1);
     if (input == 'y') {
         for (int i = 2; i < numCols - 1; i++) {
             for (int j = 2; j < numRows; j++) {
@@ -612,9 +614,7 @@ int main() {
             }
         }
     }
-    
-    //Smoothing
-    
+        
     //Print corrected VE to screen
     cout << "This is the proposed VE corrected table." << endl << endl;
     for (int i = 0; i < numCols; i++) {
@@ -647,7 +647,6 @@ int main() {
     
     
     cout << "Would you like to attempt to smooth big outliers? Y for yes, anything else for no. Note that this is most definitely not a perfect smooth, and may make things worse. If uncertain, don't use this." << endl;
-    cin.ignore(1);
     cin >> input;
     if (input == 'y' || input == 'Y') {
         int iterations = 0;
