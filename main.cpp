@@ -6,7 +6,8 @@ TODO:
 
 Create cell class to simplify mess of arrays
 Combinatory interpolation using horizontal and vertical values - DONE
-Advanced interpolation algorithms (we can be smarter - VE tables do not scale linearly) - DONE, kind of. Smoothing is now a thing.
+Advanced interpolation algorithms (we can be smarter - VE tables do not scale linearly) - DONE. Cell interpolation, both in analysis and after, is complete.
+SDL based graph GUI
 Convert to QT GUI (someday)
 
 */
@@ -17,9 +18,10 @@ Convert to QT GUI (someday)
 #include <fstream>
 #include <vector>
 #include "rlutil.h"
-
+//#include "matplotlibcpp.h"
 
 using namespace std;
+//namespace plot = matplotlibcpp;
 
 const double AFR_TARGET = 14.7;
 const double LAMBDA_TARGET = 1.0;
@@ -162,9 +164,9 @@ int main() {
     //This loop is necessary to ensure the arrays are indeed empty. For whatever reason, garbage data keeps making its way into them.
     for (int i = 1; i <= numCols; i++) {
         for (int j = 1; j <= numRows; j++) {
-            mainVEObserved[j][i] = 0;
-            recordCounterVE[j][i] = 0;
-            isPE[j][i] = 0;
+            mainVEObserved[i][j] = 0;
+            recordCounterVE[i][j] = 0;
+            isPE[i][j] = 0;
         }
     }
     
@@ -267,6 +269,7 @@ int main() {
                 currentRow = (calculateRow(minRowVal, rowIncrement, observedRPM));
                 currentCol = (calculateCol(minColVal, colIncrement, observedMAP));
                 mainVEObserved[currentRow][currentCol] += observedAFR;
+                cout << "Added " << observedAFR << ", current total is " << mainVEObserved[currentRow][currentCol] << endl;
                 recordCounterVE[currentRow][currentCol] += 1;
             }
             recordCounter++;
@@ -732,6 +735,19 @@ int main() {
             }
             outputFile << '\n';
         }
+    }
+    counter = 0;
+    vector <double> x, y, z;
+    for (int i = 1; i < numCols; i++) {
+        for (int j = 1; j < numRows; j++) {
+            x.push_back(mainVECorrected[0][i]);
+            y.push_back(mainVECorrected[j][0]);
+            z.push_back(mainVECorrected[j][i]);
+            cout << x.at(counter) << "," << y.at(counter) << "," << z.at(counter) << endl;
+            counter++;
+        }
+        outputFile << '\n';
+        
     }
     return 0;
 }
