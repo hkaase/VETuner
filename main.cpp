@@ -18,10 +18,10 @@ Convert to QT GUI (someday)
 #include <fstream>
 #include <vector>
 #include "rlutil.h"
-//#include "matplotlibcpp.h"
+#include "matplotlibcpp.h"
 
 using namespace std;
-//namespace plot = matplotlibcpp;
+namespace plot = matplotlibcpp;
 
 const double AFR_TARGET = 14.7;
 const double LAMBDA_TARGET = 1.0;
@@ -53,7 +53,6 @@ double smoothData(double, double, double);
 
 int main() {
     bool peModeTuning;
-    
     cout << "Do you want support for PE mode tuning? Type y for yes, n for no. (Know that if this is disabled, tuning in the PE range can produce catastrophic results!)" << endl;
     char input;
     cin >> input;
@@ -269,7 +268,6 @@ int main() {
                 currentRow = (calculateRow(minRowVal, rowIncrement, observedRPM));
                 currentCol = (calculateCol(minColVal, colIncrement, observedMAP));
                 mainVEObserved[currentRow][currentCol] += observedAFR;
-                cout << "Added " << observedAFR << ", current total is " << mainVEObserved[currentRow][currentCol] << endl;
                 recordCounterVE[currentRow][currentCol] += 1;
             }
             recordCounter++;
@@ -737,18 +735,24 @@ int main() {
         }
     }
     counter = 0;
-    vector <double> x, y, z;
+    std::vector<std::vector<double>> x, y, z;
     for (int i = 1; i < numCols; i++) {
+        vector<double> x_row, y_row, z_row;
         for (int j = 1; j < numRows; j++) {
-            x.push_back(mainVECorrected[0][i]);
-            y.push_back(mainVECorrected[j][0]);
-            z.push_back(mainVECorrected[j][i]);
-            cout << x.at(counter) << "," << y.at(counter) << "," << z.at(counter) << endl;
+            x_row.push_back(mainVECorrected[0][i]);
+            y_row.push_back(mainVECorrected[j][0]);
+            z_row.push_back(mainVECorrected[j][i]);
+            //cout << x2.at(counter) << "," << y2.at(counter) << "," << z2.at(counter) << endl;
             counter++;
-        }
-        outputFile << '\n';
-        
+        }  
+        x.push_back(x_row);
+        y.push_back(y_row);
+        z.push_back(z_row);
     }
+
+    plot::plot_surface(x, y, z);
+    plot::title("Sample figure");
+    plot::show();
     return 0;
 }
 
