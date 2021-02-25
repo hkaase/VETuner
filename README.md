@@ -14,12 +14,8 @@ If confused on where to start, or what this even is, check the wiki pages for so
 Go to releases, download the latest (probably the source code .ZIP if you need the examples), open VE.exe.
 
 **TO BUILD**
-This is a difficult project to build, to say the least. The library used for graphing, matplotlibcpp.h, is Python based, and is quite picky about compiling properly. I use Python 3.8, and you must compile with Python's path (if you are on Windows), and also must compile your own Python library by executing the following in your Python root folder: 
+This used to be hard to build, but it's not anymore. 
 
-cd libs
-gendef ..\python38.dll
-dlltool --dllname python38.dll --def python38.def --output-lib libpython38.a
+g++ main.cpp -o VE.exe
 
-Ensure that numpy is installed (pip install numpy), then copy the include/numpy folder to your root Python include folder. Then compile with these command line options.
-
-g++ maincpp -static -o VE.exe -IC:\Python38\include -LC:\Python38\libs -lpython38
+Then run VE.exe
