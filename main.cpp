@@ -18,10 +18,8 @@ Convert to QT GUI (someday)
 #include <fstream>
 #include <vector>
 #include "rlutil.h"
-#include "matplotlibcpp.h"
 
 using namespace std;
-namespace plot = matplotlibcpp;
 
 const double AFR_TARGET = 14.7;
 const double LAMBDA_TARGET = 1.0;
@@ -734,25 +732,6 @@ int main() {
             outputFile << '\n';
         }
     }
-    counter = 0;
-    std::vector<std::vector<double>> x, y, z;
-    for (int i = 1; i < numCols; i++) {
-        vector<double> x_row, y_row, z_row;
-        for (int j = 1; j < numRows; j++) {
-            x_row.push_back(mainVECorrected[0][i]);
-            y_row.push_back(mainVECorrected[j][0]);
-            z_row.push_back(mainVECorrected[j][i]);
-            //cout << x2.at(counter) << "," << y2.at(counter) << "," << z2.at(counter) << endl;
-            counter++;
-        }  
-        x.push_back(x_row);
-        y.push_back(y_row);
-        z.push_back(z_row);
-    }
-
-    plot::plot_surface(x, y, z);
-    plot::title("Sample figure");
-    plot::show();
     return 0;
 }
 
