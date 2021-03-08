@@ -741,14 +741,14 @@ int calculateRow(double minRowVal, double rowIncrement, double observedRPM) {
     while ((currentRow * rowIncrement) + minRowVal < observedRPM) {
         currentRow++;
     }
-    return currentRow + 1;
+    return currentRow;
 }
 int calculateCol(double minColVal, double colIncrement, double observedMAP) {
     int currentCol = 0;
     while ((currentCol * colIncrement) + minColVal < observedMAP) {
         currentCol++;
     }
-    return currentCol + 1;
+    return currentCol;
 }
 double smoothData(double smallest, double spike, double biggest) {
     spike = (biggest + smallest) / 2;
